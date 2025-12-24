@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# This is a comment - it won't run
+echo "Hello, what is your name?"
+
+# Read user input into a variable
+read user_name
+
+# Use the variable with a $ sign
+echo "Welcome to scripting, $user_name!"
