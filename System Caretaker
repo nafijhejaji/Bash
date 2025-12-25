@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# --- Configuration ---
+BACKUP_SOURCE="$HOME/Documents"
+BACKUP_DEST="$HOME/Backups"
+LOG_FILE="$HOME/script_log.txt"
+DATE=$(date +%Y-%m-%d_%H%M%S)
+
+# --- Functions ---
+# Functions keep your script organized and reusable
+log_message() {
+    echo "[$DATE] $1" | tee -a "$LOG_FILE"
+}
+
+# --- Start of Script ---
+clear
+log_message "Starting system maintenance..."
+
+# 1. Check if backup directory exists, if not, create it
+if [ ! -d "$BACKUP_DEST" ]; then
+    log_message "Backup directory not found. Creating $BACKUP_DEST"
+    mkdir -p "$BACKUP_DEST"
+fi
+
+# 2. Check Disk Usage
+# Alerts you if the disk is more than 80% full
+DISK_USAGE=$(df / | grep / | awk '{ print $5 }' | sed 's/%//g')
+
+if [ "$DISK_USAGE" -gt 80 ]; then
+    log_message "WARNING: Disk usage is high at ${DISK_USAGE}%"
+else
+    log_message "Disk usage is healthy at ${DISK_USAGE}%"
+fi
+
+# 3. Perform Backup
+# Using 'tar' to compress the source folder
+log_message "Backing up $BACKUP_SOURCE to $BACKUP_DEST/backup_$DATE.tar.gz"
+
+tar -czf "$BACKUP_DEST/backup_$DATE.tar.gz" "$BACKUP_SOURCE" 2>>"$LOG_FILE"
+
+if [ $? -eq 0 ]; then
+    log_message "Backup completed successfully."
+else
+    log_message "ERROR: Backup failed. Check log for details."
+fi
+
+log_message "Maintenance complete."
