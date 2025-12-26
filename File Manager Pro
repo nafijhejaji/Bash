@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# --- Configuration ---
+TARGET_DIR="./test_folder"  # Change this to the folder you want to clean
+LOG_FILE="organizer_log.txt"
+
+# Create target directory if it doesn't exist for testing
+mkdir -p "$TARGET_DIR"
+
+echo "------------------------------------------"
+echo "  FILE ORGANIZER & UTILITY TOOL"
+echo "------------------------------------------"
+echo "1) Organize files by extension (Images, Docs, etc.)"
+echo "2) Delete temporary files (.log, .tmp, .cache)"
+echo "3) Rename all files to lowercase"
+echo "4) Exit"
+echo "------------------------------------------"
+read -p "Choose an option [1-4]: " choice
+
+case $choice in
+    1)
+        echo "Organizing files in $TARGET_DIR..."
+        cd "$TARGET_DIR" || exit
+        for file in *; do
+            if [ -f "$file" ]; then
+                ext="${file##*.}" # Get the file extension
+                
+                case "$ext" in
+                    jpg|png|gif|jpeg) dest="Images" ;;
+                    pdf|docx|txt|pdf) dest="Documents" ;;
+                    mp3|wav|flac)     dest="Audio" ;;
+                    mp4|mkv|mov)     dest="Video" ;;
+                    *)                dest="Other" ;;
+                esac
+                
+                mkdir -p "$dest"
+                mv "$file" "$dest/"
+                echo "Moved $file to $dest/"
+            fi
+        done
+        ;;
+
+    2)
+        echo "Cleaning up temp files..."
+        find "$TARGET_DIR" -type f \( -name "*.log" -o -name "*.tmp" -o -name "*.cache" \) -delete
+        echo "Cleanup complete."
+        ;;
+
+    3)
+        echo "Converting filenames to lowercase..."
+        for file in "$TARGET_DIR"/*; do
+            if [ -f "$file" ]; then
+                new_name=$(echo "$file" | tr '[:upper:]' '[:lower:]')
+                if [ "$file" != "$new_name" ]; then
+                    mv "$file" "$new_name"
+                fi
+            fi
+        done
+        echo "Renaming complete."
+        ;;
+
+    4)
+        echo "Exiting..."
+        exit 0
+        ;;
+
+    *)
+        echo "Invalid option. Please run the script again."
+        ;;
+esac
