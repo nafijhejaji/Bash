@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# --- Configuration ---
+# Using a free, no-auth weather API for demonstration
+CITY="London"
+URL="https://wttr.in/${CITY}?format=j1"
+LOG_FILE="weather_report.log"
+
+echo "Fetching weather data for $CITY..."
+
+# 1. Fetch data and handle connection errors
+# -s (silent), -f (fail on HTTP error)
+response=$(curl -s -f "$URL")
+
+if [ $? -ne 0 ]; then
+    echo "Error: Could not reach weather service."
+    exit 1
+fi
+
+# 2. Parse JSON using jq
+# Extracting temperature and weather description
+temp_c=$(echo "$response" | jq -r '.current_condition[0].temp_C')
+weather_desc=$(echo "$response" | jq -r '.current_condition[0].weatherDesc[0].value')
+humidity=$(echo "$response" | jq -r '.current_condition[0].humidity')
+
+# 3. Logic based on data
+echo "-----------------------------------"
+echo "Current Weather in $CITY:"
+echo "Temperature: ${temp_c}°C"
+echo "Condition: $weather_desc"
+echo "Humidity: $humidity%"
+echo "-----------------------------------"
+
+# Check if it's raining to send an "Alert"
+if [[ "$weather_desc" == *"Rain"* ]] || [[ "$weather_desc" == *"Shower"* ]]; then
+    echo "☂️ ALERT: It's raining! Take an umbrella."
+else
+    echo "☀️ No rain detected. Have a great day!"
+fi
+
+# 4. Log the data for history
+echo "$(date): ${temp_c}C, $weather_desc" >> "$LOG_FILE"
