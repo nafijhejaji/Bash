@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# --- Configuration ---
+SEARCH_DIR="./my_photos"
+MAX_SIZE="500k"      # Find files larger than this
+QUALITY="60"         # Compression quality (1-100)
+LOG_FILE="compression.log"
+
+# Check if ImageMagick is installed
+if ! command -v convert &> /dev/null; then
+    echo "Error: ImageMagick is not installed. Please install it to continue."
+    exit 1
+fi
+
+echo "--- Scanning for images larger than $MAX_SIZE in $SEARCH_DIR ---"
+
+# 1. Use 'find' to locate large images
+# -type f (files), -size (larger than), -iname (case-insensitive name)
+large_files=$(find "$SEARCH_DIR" -type f -size +"$MAX_SIZE" \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \))
+
+if [ -z "$large_files" ]; then
+    echo "No large images found. System is optimized."
+    exit 0
+fi
+
+# 2. Process the files
+count=0
+while IFS= read -r file; do
+    echo "Processing: $file"
+    
+    # Get original size for the log
+    orig_size=$(du -h "$file" | cut -f1)
+    
+    # Perform compression
+    # 'convert' is part of ImageMagick
+    convert "$file" -quality "$QUALITY"% "$file"
+    
+    # Get new size
+    new_size=$(du -h "$file" | cut -f1)
+    
+    echo "[$(date)] Compressed $file ($orig_size -> $new_size)" >> "$LOG_FILE"
+    ((count++))
+done <<< "$large_files"
+
+echo "---------------------------------------"
+echo "Done! Optimized $count images."
+echo "Details saved to $LOG_FILE."
