@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# --- Configuration ---
+PROCESS_NAME="apache2"       # The process we want to keep alive
+MAX_CPU=80                   # Trigger alert if CPU > 80%
+CHECK_INTERVAL=5             # Seconds between checks
+LOG_FILE="watchdog.log"
+
+echo "--- Process Watchdog Started [PID: $$] ---"
+echo "Monitoring $PROCESS_NAME every $CHECK_INTERVAL seconds..."
+
+# An infinite loop - the script runs until you press Ctrl+C
+while true; do
+    # 1. Check if the process is running
+    # pgrep looks for the process name in the active process list
+    if ! pgrep -x "$PROCESS_NAME" > /dev/null; then
+        echo "[$(date)] ALERT: $PROCESS_NAME is down! Attempting restart..." >> "$LOG_FILE"
+        
+        # Attempt to restart (requires sudo/root)
+        sudo systemctl restart "$PROCESS_NAME"
+        
+        if [ $? -eq 0 ]; then
+            echo "[$(date)] SUCCESS: $PROCESS_NAME restarted." >> "$LOG_FILE"
+        else
+            echo "[$(date)] ERROR: Restart failed." >> "$LOG_FILE"
+        fi
+    fi
+
+    # 2. Monitor CPU usage of the process
+    # 'ps' grabs the CPU % for the specific process
+    CPU_LOAD=$(ps -C "$PROCESS_NAME" -o %cpu --no-headers | awk '{sum+=$1} END {print sum}')
+    
+    # Convert float to integer for comparison
+    CPU_INT=${CPU_LOAD%.*}
+
+    if [ -n "$CPU_INT" ] && [ "$CPU_INT" -gt "$MAX_CPU" ]; then
+        echo "[$(date)] WARNING: $PROCESS_NAME high CPU usage: $CPU_LOAD%" >> "$LOG_FILE"
+        # Here you could add a notification command (like 'mail' or 'curl' to Slack)
+    fi
+
+    # Wait before the next check
+    sleep "$CHECK_INTERVAL"
+done
