@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# --- Configuration ---
+SOURCE_FILE=$1
+VAULT_DIR="./my_vault"
+DATE=$(date +%Y-%m-%d)
+
+# 1. Check if file exists
+if [[ ! -f "$SOURCE_FILE" ]]; then
+    echo "Usage: $0 <file_to_encrypt>"
+    exit 1
+fi
+
+mkdir -p "$VAULT_DIR"
+
+# 2. Secure Password Input
+# 'read -s' hides the input from the screen
+echo "Enter secret key to lock the file:"
+read -s SECRET_KEY
+echo "Confirm secret key:"
+read -s SECRET_CONFIRM
+
+if [[ "$SECRET_KEY" != "$SECRET_CONFIRM" ]]; then
+    echo "Error: Passwords do not match!"
+    exit 1
+fi
+
+# 3. Encryption using OpenSSL
+# aes-256-cbc is a high-level security standard
+OUTPUT_NAME="${SOURCE_FILE##*/}.enc"
+
+echo "Encrypting $SOURCE_FILE..."
+
+
+
+openssl enc -aes-256-cbc -salt -pbkdf2 -in "$SOURCE_FILE" -out "$VAULT_DIR/$OUTPUT_NAME" -k "$SECRET_KEY"
+
+if [[ $? -eq 0 ]]; then
+    echo "------------------------------------------"
+    echo "SUCCESS: File encrypted to $VAULT_DIR/$OUTPUT_NAME"
+    
+    # 4. Prompt for original file deletion (Security best practice)
+    read -p "Would you like to delete the original unencrypted file? (y/n): " confirm
+    if [[ "$confirm" == "y" ]]; then
+        # 'shred' overwrites the file data before deleting to prevent recovery
+        shred -u "$SOURCE_FILE"
+        echo "Original file securely erased."
+    fi
+else
+    echo "Encryption failed."
+fi
