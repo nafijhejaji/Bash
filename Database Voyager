@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# --- Configuration ---
+DB_NAME="my_app_db"
+DB_USER="admin"
+DB_PASS="password123"
+
+BACKUP_DIR="/tmp/db_backups"
+REMOTE_SERVER="backup-node.example.com"
+REMOTE_USER="storage_user"
+REMOTE_PATH="/home/storage_user/backups/daily"
+
+DATE=$(date +%Y-%m-%d_%H%M%S)
+FILENAME="db_backup_$DATE.sql.gz"
+
+# 1. Create local backup directory
+mkdir -p "$BACKUP_DIR"
+
+echo "--- Starting Database Export ---"
+
+# 2. Dump Database and Compress on the fly
+# We pipe the output directly to gzip to save space immediately
+mysqldump -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" | gzip > "$BACKUP_DIR/$FILENAME"
+
+if [ $? -eq 0 ]; then
+    echo "Local backup created: $FILENAME"
+else
+    echo "Error: Database dump failed!"
+    exit 1
+fi
+
+# 3. Transfer to Remote Server
+echo "Syncing to remote storage..."
+
+
+
+# -i /path/to/key can be added if using a specific SSH key
+scp "$BACKUP_DIR/$FILENAME" "$REMOTE_USER@$REMOTE_SERVER:$REMOTE_PATH"
+
+if [ $? -eq 0 ]; then
+    echo "--- Transfer Complete ---"
+    
+    # 4. Housekeeping: Delete local files older than 7 days
+    # This prevents your local disk from filling up
+    find "$BACKUP_DIR" -type f -name "*.sql.gz" -mtime +7 -delete
+    echo "Local cleanup finished."
+else
+    echo "Critical Error: Remote sync failed! Check SSH connection."
+    exit 1
+fi
